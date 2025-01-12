@@ -30,7 +30,7 @@ def bulk_videos_playlist_workflow(youtube, videos_at_hand_label, playlist_functi
         if preview_only:
             print("Exiting due to -previewonly flag.")
             sys.exit(0)
-        if preview_data["exit_early"] == True:
+        if preview_data["no_actions"] == True:
             print("Exiting with no operations to execute.")
             sys.exit(0)
         
