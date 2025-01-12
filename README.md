@@ -4,9 +4,9 @@ Suite of Python scripts to use for complex operations not supported on YouTube.
 ## Prerequisites
 - Python 3.x installed
 - Python Dependencies: `google-api-python-client` `google-auth-oauthlib`
-- Create YouTube Data API v3 service account & generate/download client secret key
-- Add service account email as a manager to your YouTube account
-- Create an environment variable that points to your client secret key path
+- Create a Google Project with YouTube Data API v3 & generate/download OAuth2 client secret key file
+- Create an environment variable that points to your OAuth2 client secret key file path
+- Add yourself as a test user to your application
 
 ## Running `bulk-remove-from-playlist` Python script
 1. This Python script allows you to remove many videos from a YouTube playlist.
@@ -14,3 +14,5 @@ Suite of Python scripts to use for complex operations not supported on YouTube.
     ```python
     python bulk-remove-from-playlist.py "videoUrl1,playlistUrl1,videoUrl2,videoUrl3" "playlist_url"
     ```
+3. The first time you run the script you will be asked to sign into the Google/YouTube account you want to manage - this will generate you an authorization token locally.
+4. In future updates, make sure to delete & regenerate your token to get the latest scope requirements.
