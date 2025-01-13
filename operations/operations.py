@@ -16,6 +16,51 @@ def get_video_info_from_url(youtube, url):
 
     return video_infos
 
+def add_videos_to_playlist(youtube, videos_to_add, playlist_url, is_preview):
+    playlist_id = re.search(r"list=([^&]+)", playlist_url).group(1)
+    video_additions = []
+    already_in_playlist = []
+    failed = []
+
+    # Retrieve all playlist contents first
+    all_playlist_videos = get_all_playlist_data(youtube, playlist_id)
+    playlist_videos_dict = {video_id: (video_url, item_id) for video_id, video_url, item_id in all_playlist_videos}
+
+    # Process videos to add
+    for video_id, video_url in videos_to_add:
+        if video_id in playlist_videos_dict:
+            print(f"Video {video_id} already found in playlist {playlist_id}")
+            already_in_playlist.append((video_id, video_url))
+        else:
+            print(f"Video {video_id} not yet added to playlist {playlist_id}")
+            video = (video_id, video_url)
+            video_additions.append(video)
+            if not is_preview:
+                try:
+                    youtube.playlistItems().insert(
+                        part="snippet",
+                        body={
+                            "snippet": {
+                                "playlistId": playlist_id,
+                                "resourceId": {
+                                    "kind": "youtube#video",
+                                    "videoId": video_id
+                                }
+                            }
+                        }
+                    ).execute()
+                    print(f"Added video {video_id} to playlist {playlist_id}")
+                except Exception as e:
+                    print(f"Error adding video {video_id} to playlist {playlist_id}: {e}")
+                    failed.append((video, str(e)))
+                    video_additions.remove(video)
+    return {
+        "no_actions": len(video_additions) == 0,
+        "video_additions": video_additions,
+        "already_in_playlist": already_in_playlist,
+        "failed": failed
+    }
+
 def remove_videos_from_playlist(youtube, videos_to_remove, playlist_url, is_preview):
     playlist_id = re.search(r"list=([^&]+)", playlist_url).group(1)
     video_removals = []
@@ -24,28 +69,25 @@ def remove_videos_from_playlist(youtube, videos_to_remove, playlist_url, is_prev
 
     # Retrieve all playlist contents first
     all_playlist_videos = get_all_playlist_data(youtube, playlist_id)
+    playlist_videos_dict = {video_id: (video_url, item_id) for video_id, video_url, item_id in all_playlist_videos}
 
     # Process videos to remove
     for video_id, video_url in videos_to_remove:
-        found = False
-        for playlist_video_id, playlist_video_url, playlist_item_id in all_playlist_videos:
-            if video_id == playlist_video_id:
-                print(f"Found video {video_id} in playlist {playlist_id}")
-                video_removals.append((video_id, video_url))
-                found = True
-                if not is_preview:
-                    try:
-                        youtube.playlistItems().delete(id=playlist_item_id).execute()
-                        print(f"Removed video {video_id} from playlist {playlist_id}")
-                    except Exception as e:
-                        print(f"Error removing video {video_id} from playlist {playlist_id}: {e}")
-                        failed.append((video_id, str(e)))
-                        continue
-                break
-        if not found:
+        if video_id in playlist_videos_dict:
+            print(f"Found video {video_id} in playlist {playlist_id}")
+            video = (video_id, video_url)
+            video_removals.append(video)
+            if not is_preview:
+                try:
+                    youtube.playlistItems().delete(id=playlist_videos_dict[video_id][1]).execute()
+                    print(f"Removed video {video_id} from playlist {playlist_id}")
+                except Exception as e:
+                    print(f"Error removing video {video_id} from playlist {playlist_id}: {e}")
+                    failed.append((video, str(e)))
+                    video_removals.remove(video)
+        else:
             print(f"Video {video_id} not found in playlist {playlist_id}")
-            not_in_playlist.append((video_id, video_url))
-
+            not_in_playlist.append(video)
     return {
         "no_actions": len(video_removals) == 0,
         "video_removals": video_removals,
