@@ -24,7 +24,10 @@ def bulk_videos_playlist_workflow(youtube, videos_at_hand_label, playlist_functi
         "playlist_url": playlist_url,
         videos_at_hand_label: list(videos_at_hand["videos_at_hand"].values()),
         "unavailable_videos": list(videos_at_hand["unavailable_videos"].values()),
-        "unavailable_playlist_ids": videos_at_hand["unavailable_playlist_ids"]
+        "unavailable_playlist_ids": videos_at_hand["unavailable_playlist_ids"],
+        videos_at_hand_label + "_total": len(list(videos_at_hand["videos_at_hand"].values())),
+        "unavailable_videos_total": len(list(videos_at_hand["unavailable_videos"].values())),
+        "unavailable_playlist_ids_total": len(videos_at_hand["unavailable_playlist_ids"]),
     }
 
     if not flags['force'] or flags['previewonly']:
@@ -59,7 +62,10 @@ def divide_into_categories_workflow(youtube):
     input_data = {
         "videos_to_categorize": list(videos_at_hand["videos_at_hand"].values()),
         "unavailable_videos": list(videos_at_hand["unavailable_videos"].values()),
-        "unavailable_playlist_ids": videos_at_hand["unavailable_playlist_ids"]
+        "unavailable_playlist_ids": videos_at_hand["unavailable_playlist_ids"],
+        "videos_to_categorize_total": len(list(videos_at_hand["videos_at_hand"].values())),
+        "unavailable_videos_total": len(list(videos_at_hand["unavailable_videos"].values())),
+        "unavailable_playlist_ids_total": len(videos_at_hand["unavailable_playlist_ids"])
     }
 
     categories_data = common.categorize_videos(videos_at_hand["videos_at_hand"])
@@ -77,6 +83,7 @@ def divide_into_categories_workflow(youtube):
         preview_data = {
             "no_actions": len(playlists_creations_preview) == 0,
             "playlists_creations": playlists_creations_preview,
+            "playlists_creations_total": len(playlists_creations_preview)
         }
         preview_contents = {
             "input_data": input_data,
@@ -109,7 +116,9 @@ def divide_into_categories_workflow(youtube):
     result_data = {
         "no_actions": len(playlists_creations) == 0,
         "playlists_creations": playlists_creations,
-        "failed": failed
+        "failed": failed,
+        "playlists_creations_total": len(playlists_creations),
+        "failed_total": len(failed),
     }
     result_contents = {
         "input_data": input_data,

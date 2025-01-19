@@ -1,5 +1,6 @@
 import re
 import sys
+import math
 
 # Operations workflows depend on
 
@@ -22,6 +23,9 @@ def get_all_playlist_video_data(youtube, playlist_id, categories):
     try:
         all_playlist_videos = []
         unavailable_video_data = []
+
+        # Fetch playlist items
+        playlist_items = []
         request = youtube.playlistItems().list(
             part="id,contentDetails",
             playlistId=playlist_id,
@@ -29,29 +33,31 @@ def get_all_playlist_video_data(youtube, playlist_id, categories):
         )
         while request:
             response = request.execute()
-            for item in response["items"]:
-                video_id = item["contentDetails"]["videoId"]
-                video_url = f"https://www.youtube.com/watch?v={video_id}"
-
-                # Get video details
-                video_details = get_single_video_data(youtube, video_id)
-                if not video_details[0]:
-                    unavailable_video_data.append({
-                        "video_id": video_id,
-                        "playlist_item_id": item["id"]
-                    })
-                    continue
-                video_title = video_details[1]["title"]
-                video_category = video_details[1]["categoryId"]
-
-                all_playlist_videos.append({
-                    "video_id": video_id,
-                    "video_url": video_url,
-                    "video_title": video_title,
-                    "video_category": categories.get(video_category, "Unknown"),
-                    "playlist_item_id": item["id"]
-                })
+            playlist_items.extend(response.get("items", []))
             request = youtube.playlistItems().list_next(request, response)
+
+        # Batch video details retrieval
+        video_ids = [item["contentDetails"]["videoId"] for item in playlist_items]
+        video_details = fetch_video_details_batch(youtube, video_ids)
+
+        for item in playlist_items:
+            video_id = item["contentDetails"]["videoId"]
+            video_url = f"https://www.youtube.com/watch?v={video_id}"
+            video_data = video_details.get(video_id)
+
+            if not video_data:
+                print(f"No details found for video {video_id}")
+                unavailable_video_data.append({"video_id": video_id, "playlist_item_id": item["id"]})
+                continue
+
+            all_playlist_videos.append({
+                "video_id": video_id,
+                "video_url": video_url,
+                "video_title": video_data["title"],
+                "video_category": categories.get(video_data["categoryId"], "Unknown"),
+                "playlist_item_id": item["id"]
+            })
+
         return (True, {
             "all_playlist_videos": all_playlist_videos,
             "unavailable_video_data": unavailable_video_data
@@ -59,21 +65,41 @@ def get_all_playlist_video_data(youtube, playlist_id, categories):
     except Exception as e:
         print(f"Error retrieving playlist {playlist_id} contents:\n{e}\n")
         return (False, None)
-    
-def get_single_video_data(youtube, video_id):
+
+def fetch_video_details_batch(youtube, video_ids):
+    video_details = {}
     try:
-        video_details_request = youtube.videos().list(
-            part="snippet",
-            id=video_id
-        )
-        video_details_response = video_details_request.execute()
-        if not video_details_response["items"]:
-            print(f"No details found for video {video_id}")
-            return (False, None)
-        return (True, video_details_response["items"][0]["snippet"])
+        def batch_callback(request_id, response, exception):
+            if exception:
+                print(f"Error retrieving video details for {request_id}: {exception}")
+            else:
+                video_details[request_id] = response['items'][0]['snippet']
+
+        # Creating the batch request to fetch video details
+        batch = youtube.new_batch_http_request(callback=batch_callback)
+
+        # Process video_ids in chunks of 50
+        for i in range(0, len(video_ids), 50):
+            batch_ids = video_ids[i:i + 50]  # Chunk of 50 video IDs
+            for video_id in batch_ids:
+                # Add video request to the batch
+                batch.add(
+                    youtube.videos().list(part="snippet", id=video_id),
+                    request_id=video_id  # Pass the video ID as the request ID
+                )
+
+            # Execute the batch request after adding the 50 video details fetch operations
+            try:
+                batch.execute()
+            except Exception as e:
+                print(f"Error executing batch request: {e}")
+
+            # Clear the batch to prepare for the next batch
+            batch = youtube.new_batch_http_request(callback=batch_callback)
+            
     except Exception as e:
-        print(f"Error retrieving video {video_id} contents:\n{e}\n")
-        return (False, None)
+        print(f"Error retrieving batch video details:\n{e}\n")
+    return video_details
 
 def add_videos_to_playlist(youtube, videos_to_add, playlist_url, destination_playlist_videos, is_preview):
     playlist_id = re.search(r"list=([^&]+)", playlist_url).group(1) if playlist_url != None else None
@@ -113,7 +139,10 @@ def add_videos_to_playlist(youtube, videos_to_add, playlist_url, destination_pla
         "no_actions": len(video_additions) == 0,
         "video_additions": video_additions,
         "already_in_playlist": already_in_playlist,
-        "failed": failed
+        "failed": failed,
+        "video_additions_total": len(video_additions),
+        "already_in_playlist_total": len(already_in_playlist),
+        "failed_total": len(failed)
     }
 
 def remove_videos_from_playlist(youtube, videos_to_remove, playlist_url, destination_playlist_videos, is_preview):
@@ -143,7 +172,10 @@ def remove_videos_from_playlist(youtube, videos_to_remove, playlist_url, destina
         "no_actions": len(video_removals) == 0,
         "video_removals": video_removals,
         "not_in_playlist": not_in_playlist,
-        "failed": failed
+        "failed": failed,
+        "video_removals_total": len(video_removals),
+        "not_in_playlist_total": len(not_in_playlist),
+        "failed_total": len(failed)
     }
 
 def get_single_playlist_data(youtube, url):
