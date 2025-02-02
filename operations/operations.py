@@ -73,7 +73,10 @@ def fetch_video_details_batch(youtube, video_ids):
             if exception:
                 print(f"Error retrieving video details for {request_id}: {exception}")
             else:
-                video_details[request_id] = response['items'][0]['snippet']
+                if 'items' in response and len(response['items']) > 0:
+                    video_details[request_id] = response['items'][0]['snippet']
+                else:
+                    print(f"No items found in response for {request_id}")
 
         # Creating the batch request to fetch video details
         batch = youtube.new_batch_http_request(callback=batch_callback)
