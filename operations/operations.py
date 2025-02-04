@@ -1,6 +1,6 @@
 import re
 import sys
-import math
+from tqdm import tqdm
 
 # Operations workflows depend on
 
@@ -110,14 +110,18 @@ def add_videos_to_playlist(youtube, videos_to_add, playlist_url, destination_pla
     already_in_playlist = []
     failed = []
 
+    # Progress bar
+    progress_string = "Generating add preview" if is_preview else "Adding videos"
+    progress_bar = tqdm(total=len(videos_to_add), desc=progress_string, unit="video")
+
     # Process videos to add
     for video_id in videos_to_add:
         video = videos_to_add[video_id]
         if video_id in destination_playlist_videos:
-            print(f"Video {video_id} already found in playlist {playlist_id}")
+            tqdm.write(f"Video {video_id} already found in playlist {playlist_id}")
             already_in_playlist.append(video)
         else:
-            print(f"Video {video_id} not yet added to playlist {playlist_id}")
+            tqdm.write(f"Video {video_id} not yet added to playlist {playlist_id}")
             video_additions.append(video)
             if not is_preview:
                 try:
@@ -133,11 +137,13 @@ def add_videos_to_playlist(youtube, videos_to_add, playlist_url, destination_pla
                             }
                         }
                     ).execute()
-                    print(f"Added video {video_id} to playlist {playlist_id}")
+                    tqdm.write(f"Added video {video_id} to playlist {playlist_id}")
                 except Exception as e:
-                    print(f"Error adding video {video_id} to playlist {playlist_id}:\n{e}\n")
+                    tqdm.write(f"Error adding video {video_id} to playlist {playlist_id}:\n{e}\n")
                     failed.append((video, str(e)))
                     video_additions.remove(video)
+        progress_bar.update(1)
+    progress_bar.close()
     return {
         "no_actions": len(video_additions) == 0,
         "video_additions": video_additions,
@@ -154,23 +160,29 @@ def remove_videos_from_playlist(youtube, videos_to_remove, playlist_url, destina
     not_in_playlist = []
     failed = []
 
+    # Progress bar
+    progress_string = "Generating removal preview" if is_preview else "Removing videos"
+    progress_bar = tqdm(total=len(videos_to_remove), desc=progress_string, unit="video")
+
     # Process videos to remove
     for video_id in videos_to_remove:
         video = videos_to_remove[video_id]
         if video_id in destination_playlist_videos:
-            print(f"Found video {video_id} in playlist {playlist_id}")
+            tqdm.write(f"Found video {video_id} in playlist {playlist_id}")
             video_removals.append(video)
             if not is_preview:
                 try:
                     youtube.playlistItems().delete(id=destination_playlist_videos[video_id]["playlist_item_id"]).execute()
-                    print(f"Removed video {video_id} from playlist {playlist_id}")
+                    tqdm.write(f"Removed video {video_id} from playlist {playlist_id}")
                 except Exception as e:
-                    print(f"Error removing video {video_id} from playlist {playlist_id}:\n{e}\n")
+                    tqdm.write(f"Error removing video {video_id} from playlist {playlist_id}:\n{e}\n")
                     failed.append((video, str(e)))
                     video_removals.remove(video)
         else:
-            print(f"Video {video_id} not found in playlist {playlist_id}")
+            tqdm.write(f"Video {video_id} not found in playlist {playlist_id}")
             not_in_playlist.append(video)
+        progress_bar.update(1)
+    progress_bar.close()
     return {
         "no_actions": len(video_removals) == 0,
         "video_removals": video_removals,

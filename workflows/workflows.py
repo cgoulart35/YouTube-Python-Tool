@@ -4,7 +4,6 @@ from operations import operations
 from workflows import common
 
 def bulk_videos_playlist_workflow(youtube, videos_at_hand_label, playlist_function):
-    print("Calculating...")
     urls = re.sub(r'\s+', '', sys.argv[1]).split(',')
     playlist_url = sys.argv[2]
     flags = common.get_command_flags()
@@ -46,7 +45,6 @@ def bulk_videos_playlist_workflow(youtube, videos_at_hand_label, playlist_functi
     common.save_json(result_contents, "result", "Operation completed. Result saved to: ")
 
 def divide_into_categories_workflow(youtube):
-    print("Calculating...")
     urls = re.sub(r'\s+', '', sys.argv[1]).split(',')
     flags = common.get_command_flags()
 

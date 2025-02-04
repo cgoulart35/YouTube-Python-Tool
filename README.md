@@ -3,7 +3,7 @@ Suite of Python scripts to use for complex operations not supported on YouTube.
 
 ## Prerequisites
 - Python 3.x installed
-- Python Dependencies: `google-api-python-client` `google-auth-oauthlib`
+- Python Dependencies: `google-api-python-client` `google-auth-oauthlib` `tqdm`
 - Create a Google Project with YouTube Data API v3 & generate/download OAuth2 client secret key file
 - Create an environment variable that points to your OAuth2 client secret key file path
 - Add yourself as a test user to your application
